@@ -1,0 +1,112 @@
+{% extends 'admin/change_form.html' %}
+
+{% block after_related_objects %}
+<style>
+    .release-floating-panel {
+        position: fixed;
+        right: 30px;
+        top: 140px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        z-index: 999;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 220px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .release-floating-panel h3 {
+        margin: 0 0 5px 0;
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-align: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .btn-custom {
+        padding: 12px 15px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-approve {
+        background-color: #10b981;
+        /* Emerald 500 */
+        color: white;
+    }
+
+    .btn-approve:hover {
+        background-color: #059669;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-reject {
+        background-color: #ef4444;
+        /* Red 500 */
+        color: white;
+    }
+
+    .btn-reject:hover {
+        background-color: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-distribute {
+        background-color: #3b82f6;
+        /* Blue 500 */
+        color: white;
+    }
+
+    .btn-distribute:hover {
+        background-color: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    }
+</style>
+<div class="release-floating-panel">
+    <h3>Release Actions</h3>
+    {% if original.release_status == 'pending' %}
+    <input type="submit" value="✓ Approve" name="_approve" class="btn-custom btn-approve">
+    <input type="submit" value="✕ Reject" name="_reject" class="btn-custom btn-reject">
+    {% endif %}
+
+    {% if original.release_status == 'approved' %}
+    <input type="submit" value="🚀 Distribute" name="_distribute" class="btn-custom btn-distribute">
+    {% endif %}
+
+    {% if original.release_status == 'released' %}
+    <div style="text-align: center; color: #10b981; font-weight: bold; padding: 10px;">
+        ✓ Released
+    </div>
+    {% endif %}
+
+    {% if original.release_status == 'rejected' %}
+    <div style="text-align: center; color: #ef4444; font-weight: bold; padding: 10px;">
+        ✕ Rejected
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block submit_buttons_bottom %}{% endblock %}
