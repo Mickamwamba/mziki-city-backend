@@ -83,30 +83,194 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
     }
+
+    /* Modal Styles */
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
+
+    .custom-modal {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        width: 400px;
+        max-width: 90%;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 30px;
+    }
+
+    .modal-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 10px;
+    }
+
+    .modal-message {
+        color: #64748b;
+        margin-bottom: 30px;
+        line-height: 1.5;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 15px;
+    }
+
+    .modal-btn {
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .modal-btn-cancel {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .modal-btn-cancel:hover {
+        background: #e2e8f0;
+    }
+
+    .modal-btn-confirm {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .modal-btn-confirm:hover {
+        opacity: 0.9;
+    }
 </style>
 <div class="release-floating-panel">
     <h3>Release Actions</h3>
-    {% if original.release_status == 'pending' %}
-    <input type="submit" value="✓ Approve" name="_approve" class="btn-custom btn-approve">
-    <input type="submit" value="✕ Reject" name="_reject" class="btn-custom btn-reject">
+    {% if original.status == 'pending' %}
+    <button type="button" class="btn-custom btn-approve"
+        onclick="showModal('_approve', 'Approve Release', 'Are you sure you want to approve this release? It will be marked as approved and ready for distribution.', '✓', '#10b981')">
+        ✓ Approve
+    </button>
+    <button type="button" class="btn-custom btn-reject"
+        onclick="showModal('_reject', 'Reject Release', 'Are you sure you want to reject this release? The artist will be notified.', '✕', '#ef4444')">
+        ✕ Reject
+    </button>
     {% endif %}
 
-    {% if original.release_status == 'approved' %}
-    <input type="submit" value="🚀 Distribute" name="_distribute" class="btn-custom btn-distribute">
+    {% if original.status == 'approved' %}
+    <button type="button" class="btn-custom btn-distribute"
+        onclick="showModal('_distribute', 'Distribute Release', 'Are you sure you want to distribute this release? This will mark it as LIVE and update all song statuses.', '🚀', '#3b82f6')">
+        🚀 Distribute
+    </button>
     {% endif %}
 
-    {% if original.release_status == 'released' %}
+    {% if original.status == 'released' %}
     <div style="text-align: center; color: #10b981; font-weight: bold; padding: 10px;">
         ✓ Released
     </div>
     {% endif %}
 
-    {% if original.release_status == 'rejected' %}
+    {% if original.status == 'rejected' %}
     <div style="text-align: center; color: #ef4444; font-weight: bold; padding: 10px;">
         ✕ Rejected
     </div>
     {% endif %}
 </div>
+
+<!-- Custom Modal -->
+<div id="confirmModal" class="custom-modal-overlay">
+    <div class="custom-modal">
+        <div id="modalIcon" class="modal-icon"></div>
+        <h3 id="modalTitle" class="modal-title"></h3>
+        <p id="modalMessage" class="modal-message"></p>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
+            <button id="modalConfirmBtn" class="modal-btn modal-btn-confirm" onclick="confirmAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentAction = null;
+
+    function showModal(action, title, message, icon, color) {
+        currentAction = action;
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = message;
+
+        const iconEl = document.getElementById('modalIcon');
+        iconEl.innerText = icon;
+        iconEl.style.backgroundColor = color + '20'; // 20% opacity
+        iconEl.style.color = color;
+
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        confirmBtn.style.backgroundColor = color;
+
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+        currentAction = null;
+    }
+
+    function confirmAction() {
+        if (!currentAction) return;
+
+        // Create hidden input and append to form
+        const form = document.getElementById('releaserequest_form');
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = currentAction;
+        input.value = '1';
+        form.appendChild(input);
+
+        form.submit();
+    }
+
+    // Close modal on outside click
+    document.getElementById('confirmModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+</script>
 {% endblock %}
 
 {% block submit_buttons_bottom %}{% endblock %}

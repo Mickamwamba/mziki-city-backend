@@ -30,7 +30,10 @@ class ArtistRevenueSplit(RevenueSplit):
         verbose_name_plural = "Revenue Splits"
 
 # 2. Release Management
-class ReleaseRequest(Song):
+# 2. Release Management
+from distribution.models import ReleaseRequest as DistReleaseRequest
+
+class ReleaseRequest(DistReleaseRequest):
     class Meta:
         proxy = True
         verbose_name = "Release Request"

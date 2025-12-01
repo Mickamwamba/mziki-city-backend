@@ -108,86 +108,201 @@ class DistributionRequestInline(admin.TabularInline):
     def has_add_permission(self, request, obj=None):
         return False
 
+from distribution.models import ReleaseRequestContent, ReleaseRequestPlatform
+
+
+
+class ReleaseRequestPlatformInline(admin.TabularInline):
+    model = ReleaseRequestPlatform
+    extra = 0
+    readonly_fields = ('platform', 'status', 'distributed_at', 'external_id')
+    can_delete = False
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+
 @admin.register(ReleaseRequest)
 class ReleaseRequestAdmin(admin.ModelAdmin):
-    list_display = ('title', 'artist', 'release_status', 'platform_count', 'overall_status', 'created_at')
-    list_filter = ('release_status', 'is_released', 'artist')
-    search_fields = ('title', 'artist__artist_name', 'artist__username')
-    readonly_fields = [field.name for field in Song._meta.fields]
-    inlines = [DistributionRequestInline, RevenueSplitInline]
+    list_display = ('cover_art_preview', 'title', 'artist', 'status', 'created_at')
+    list_display_links = ('cover_art_preview', 'title', 'artist', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('title', 'artist__username', 'artist__email')
+    inlines = [ReleaseRequestPlatformInline]
     
+    readonly_fields = ('content_details',)
     fieldsets = (
-        ('Release Details', {
-            'fields': ('title', 'version', 'artist', 'album', 'genre', 'subgenre', 'language', 'duration', 'explicit_content', 'release_status')
+        (None, {
+            'fields': ('content_details',)
         }),
-        ('Release Metadata', {
-            'fields': ('is_released', 'release_date', 'label_name', 'catalog_number', 'excluded_countries')
-        }),
-        ('Assets', {
-            'fields': ('audio_file', 'cover_art')
-        })
     )
     
-    def get_queryset(self, request):
-        # Only show songs that have at least one distribution request
-        return super().get_queryset(request).filter(distributions__isnull=False).distinct()
+    def content_details(self, obj):
+        from django.utils.html import format_html, mark_safe
+        
+        content = obj.contents.first()
+        if not content:
+            return "No content details available."
+            
+        html = '<div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">'
+        
+        if content.song:
+            song = content.song
+            # Header with Cover and Title
+            html += f'''
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <img src="{song.cover_art.url if song.cover_art else ''}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; background: #eee;" />
+                <div>
+                    <h3 style="margin: 0 0 5px 0; font-size: 18px;">{song.title} <span style="font-size: 12px; color: #64748b; font-weight: normal;">(Single)</span></h3>
+                    <p style="margin: 0; color: #64748b;">{song.artist.username}</p>
+                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{song.genre}</span>
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{song.duration or '--:--'}</span>
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{song.get_explicit_content_display()}</span>
+                    </div>
+                </div>
+            </div>
+            '''
+            
+            # Grid Layout for Details
+            html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">'
+            
+            # Left Column: Release Info & Credits
+            html += '<div>'
+            html += '<h4 style="border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; margin-bottom: 10px;">Release Info & Credits</h4>'
+            html += f'<p><strong>Label:</strong> {song.label_name or "-"}</p>'
+            html += f'<p><strong>Catalog #:</strong> {song.catalog_number or "-"}</p>'
+            html += f'<p><strong>Release Date:</strong> {song.release_date or "-"}</p>'
+            html += f'<p><strong>Primary Artist:</strong> {song.primary_artist_name}</p>'
+            html += f'<p><strong>Featured:</strong> {song.featured_artists or "-"}</p>'
+            html += f'<p><strong>Producer:</strong> {song.producer or "-"}</p>'
+            html += f'<p><strong>Songwriter:</strong> {song.song_writer or "-"}</p>'
+            html += '</div>'
+            
+            # Right Column: Rights & Assets
+            html += '<div>'
+            html += '<h4 style="border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; margin-bottom: 10px;">Rights & Assets</h4>'
+            html += f'<p><strong>Composition:</strong> {song.composition_owner} ({song.composition_year or "-"})</p>'
+            html += f'<p><strong>Master:</strong> {song.master_recording_owner} ({song.master_recording_year or "-"})</p>'
+            html += f'<p style="margin-top: 10px;"><strong>Audio File:</strong> <a href="{song.audio_file.url}" target="_blank" style="color: #3b82f6;">Listen / Download</a></p>'
+            html += '</div>'
+            
+            html += '</div>' # End Grid
+            
+            # Splits Section
+            splits = song.revenue_splits.all()
+            if splits.exists():
+                html += '<div style="margin-top: 20px;">'
+                html += '<h4 style="border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; margin-bottom: 10px;">Revenue Splits</h4>'
+                html += '<table style="width: 100%; text-align: left; border-collapse: collapse;">'
+                html += '<tr style="background: #f1f5f9;"><th style="padding: 8px;">Recipient</th><th style="padding: 8px;">Role</th><th style="padding: 8px;">Percentage</th></tr>'
+                for split in splits:
+                    html += f'<tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{split.recipient}</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{split.role}</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{split.percentage}%</td></tr>'
+                html += '</table>'
+                html += '</div>'
 
-    def platform_count(self, obj):
-        return obj.distributions.count()
-    platform_count.short_description = "Platforms"
+        elif content.album:
+            album = content.album
+            # Header
+            html += f'''
+            <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <img src="{album.cover_art.url if album.cover_art else ''}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 8px; background: #eee;" />
+                <div>
+                    <h3 style="margin: 0 0 5px 0; font-size: 18px;">{album.title} <span style="font-size: 12px; color: #64748b; font-weight: normal;">(Album)</span></h3>
+                    <p style="margin: 0; color: #64748b;">{album.artist.username}</p>
+                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{album.genre}</span>
+                        <span style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{album.songs.count()} Tracks</span>
+                    </div>
+                </div>
+            </div>
+            '''
+            
+            # Info
+            html += '<div style="margin-bottom: 20px;">'
+            html += f'<p><strong>Label:</strong> {album.label_name or "-"}</p>'
+            html += f'<p><strong>UPC:</strong> {album.upc or "-"}</p>'
+            html += f'<p><strong>Release Date:</strong> {album.release_date or "-"}</p>'
+            html += '</div>'
+            
+            # Tracks
+            songs = album.songs.all()
+            if songs.exists():
+                html += '<div>'
+                html += '<h4 style="border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; margin-bottom: 10px;">Tracklist</h4>'
+                html += '<table style="width: 100%; text-align: left; border-collapse: collapse;">'
+                html += '<tr style="background: #f1f5f9;"><th style="padding: 8px;">#</th><th style="padding: 8px;">Title</th><th style="padding: 8px;">Duration</th><th style="padding: 8px;">Audio</th></tr>'
+                for i, song in enumerate(songs, 1):
+                    html += f'<tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{i}</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{song.title}</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">{song.duration or "-"}</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0;"><a href="{song.audio_file.url}" target="_blank">Listen</a></td></tr>'
+                html += '</table>'
+                html += '</div>'
 
-    def overall_status(self, obj):
-        statuses = list(obj.distributions.values_list('status', flat=True))
-        if not statuses:
-            return "No Requests"
-        if all(s == 'distributed' for s in statuses):
-            return "Distributed"
-        if 'failed' in statuses:
-            return "Has Failures"
-        return "Pending"
-    overall_status.short_description = "Platform Status"
+        html += '</div>'
+        return mark_safe(html)
+    content_details.short_description = "Release Content Details"
+    
+    def cover_art_preview(self, obj):
+        from django.utils.html import format_html
+        content = obj.contents.first()
+        if content:
+            if content.song and content.song.cover_art:
+                return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />', content.song.cover_art.url)
+            elif content.album and content.album.cover_art:
+                return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />', content.album.cover_art.url)
+        return "-"
+    cover_art_preview.short_description = "Cover"
+    
+    actions = ['approve_releases', 'reject_releases', 'mark_released']
 
-    actions = ['approve_release', 'reject_release', 'mark_all_distributed']
+    def approve_releases(self, request, queryset):
+        queryset.update(status='approved')
+    approve_releases.short_description = "Approve selected releases"
 
-    def approve_release(self, request, queryset):
-        queryset.update(release_status='approved')
-    approve_release.short_description = "Approve selected releases"
+    def reject_releases(self, request, queryset):
+        queryset.update(status='rejected')
+    reject_releases.short_description = "Reject selected releases"
 
-    def reject_release(self, request, queryset):
-        queryset.update(release_status='rejected')
-    reject_release.short_description = "Reject selected releases"
-
-    def mark_all_distributed(self, request, queryset):
-        from django.utils import timezone
-        # Update all distribution requests for selected songs
-        for song in queryset:
-            song.distributions.update(status='distributed', distributed_at=timezone.now())
-            song.is_released = True
-            song.release_status = 'released'
-            song.save()
-    mark_all_distributed.short_description = "Mark as Released (Distribute All)"
+    def mark_released(self, request, queryset):
+        queryset.update(status='released')
+    mark_released.short_description = "Mark selected releases as Released"
 
     change_form_template = 'admin/admin_dashboard/releaserequest/change_form.html'
 
     def response_change(self, request, obj):
         if "_approve" in request.POST:
-            obj.release_status = 'approved'
+            obj.status = 'approved'
             obj.save()
             self.message_user(request, "Release approved successfully.")
             return self.response_post_save_change(request, obj)
         
         if "_reject" in request.POST:
-            obj.release_status = 'rejected'
+            obj.status = 'rejected'
             obj.save()
             self.message_user(request, "Release rejected.")
             return self.response_post_save_change(request, obj)
 
         if "_distribute" in request.POST:
             from django.utils import timezone
-            obj.distributions.update(status='distributed', distributed_at=timezone.now())
-            obj.is_released = True
-            obj.release_status = 'released'
+            # 1. Update Platform Statuses
+            obj.platform_statuses.update(status='distributed', distributed_at=timezone.now())
+            
+            # 2. Update Content (Songs/Albums)
+            for content in obj.contents.all():
+                if content.song:
+                    content.song.is_released = True
+                    content.song.release_status = 'released'
+                    content.song.release_date = timezone.now().date()
+                    content.song.save()
+                if content.album:
+                    content.album.is_released = True
+                    content.album.release_date = timezone.now().date()
+                    content.album.save()
+                    # Also update album tracks if needed
+                    content.album.songs.update(is_released=True, release_status='released', release_date=timezone.now().date())
+
+            # 3. Update Request Status
+            obj.status = 'released'
             obj.save()
+            
             self.message_user(request, "Release distributed and marked as live.")
             return self.response_post_save_change(request, obj)
 
