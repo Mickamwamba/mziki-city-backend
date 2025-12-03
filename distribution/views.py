@@ -18,35 +18,49 @@ class ReleaseRequestViewSet(viewsets.ModelViewSet):
     def create_release(self, request):
         # Expects: { "song_id": 1, "platform_ids": [1, 2], "splits": [...] }
         # Or for album: { "album_id": 1, ... }
+        # For Label: { "artist_id": 5, ... }
         
         song_id = request.data.get('song_id')
         album_id = request.data.get('album_id')
+        artist_id = request.data.get('artist_id')
         platform_ids = request.data.get('platform_ids', [])
         splits_data = request.data.get('splits', [])
         
         if not song_id and not album_id:
             return Response({"error": "Song ID or Album ID is required"}, status=status.HTTP_400_BAD_REQUEST)
             
+        # Determine the artist for this release
+        release_artist = request.user
+        if request.user.is_label:
+            if not artist_id:
+                return Response({"error": "Artist ID is required for label releases"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                release_artist = User.objects.get(id=artist_id, label=request.user)
+            except User.DoesNotExist:
+                return Response({"error": "Invalid artist or artist not managed by you"}, status=status.HTTP_403_FORBIDDEN)
+        
         target_obj = None
         title = ""
         
         if song_id:
             try:
-                target_obj = Song.objects.get(id=song_id, artist=request.user)
+                target_obj = Song.objects.get(id=song_id, artist=release_artist)
                 title = target_obj.title
             except Song.DoesNotExist:
                 return Response({"error": "Song not found"}, status=status.HTTP_404_NOT_FOUND)
         elif album_id:
             from music.models import Album
             try:
-                target_obj = Album.objects.get(id=album_id, artist=request.user)
+                target_obj = Album.objects.get(id=album_id, artist=release_artist)
                 title = target_obj.title
             except Album.DoesNotExist:
                 return Response({"error": "Album not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # 1. Create ReleaseRequest
         release_request = ReleaseRequest.objects.create(
-            artist=request.user,
+            artist=release_artist,
             status='pending',
             title=title
         )

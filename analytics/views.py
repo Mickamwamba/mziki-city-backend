@@ -11,17 +11,32 @@ class AnalyticsDashboardView(APIView):
     def get(self, request):
         user = request.user
         
-        # Aggregate total streams and revenue for the user's songs
-        total_streams = StreamCount.objects.filter(song__artist=user).aggregate(Sum('count'))['count__sum'] or 0
-        total_revenue = Revenue.objects.filter(song__artist=user).aggregate(Sum('amount'))['amount__sum'] or 0.0
+        # Base filter
+        filters = {}
+        if user.is_label:
+            artist_id = request.query_params.get('artist_id')
+            if artist_id:
+                # Filter for specific managed artist
+                filters['song__artist_id'] = artist_id
+                filters['song__artist__label'] = user
+            else:
+                # All managed artists
+                filters['song__artist__label'] = user
+        else:
+            # Artist viewing their own data
+            filters['song__artist'] = user
+
+        # Aggregate total streams and revenue
+        total_streams = StreamCount.objects.filter(**filters).aggregate(Sum('count'))['count__sum'] or 0
+        total_revenue = Revenue.objects.filter(**filters).aggregate(Sum('amount'))['amount__sum'] or 0.0
 
         # Get recent data
-        recent_streams = StreamCount.objects.filter(song__artist=user).order_by('-date')[:10]
-        recent_revenue = Revenue.objects.filter(song__artist=user).order_by('-date')[:10]
+        recent_streams = StreamCount.objects.filter(**filters).order_by('-date')[:10]
+        recent_revenue = Revenue.objects.filter(**filters).order_by('-date')[:10]
 
         # Aggregate by platform
-        platform_streams = StreamCount.objects.filter(song__artist=user).values('platform__name').annotate(total=Sum('count'))
-        platform_revenue = Revenue.objects.filter(song__artist=user).values('platform__name').annotate(total=Sum('amount'))
+        platform_streams = StreamCount.objects.filter(**filters).values('platform__name').annotate(total=Sum('count'))
+        platform_revenue = Revenue.objects.filter(**filters).values('platform__name').annotate(total=Sum('amount'))
 
         return Response({
             "total_streams": total_streams,

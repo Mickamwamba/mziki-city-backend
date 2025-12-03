@@ -123,7 +123,7 @@ class ReleaseRequestPlatformInline(admin.TabularInline):
 
 @admin.register(ReleaseRequest)
 class ReleaseRequestAdmin(admin.ModelAdmin):
-    list_display = ('cover_art_preview', 'title', 'artist', 'status', 'created_at')
+    list_display = ('cover_art_preview', 'title', 'artist', 'get_label', 'status', 'created_at')
     list_display_links = ('cover_art_preview', 'title', 'artist', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('title', 'artist__username', 'artist__email')
@@ -250,6 +250,14 @@ class ReleaseRequestAdmin(admin.ModelAdmin):
                 return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />', content.album.cover_art.url)
         return "-"
     cover_art_preview.short_description = "Cover"
+
+    def get_label(self, obj):
+        if obj.artist.is_label:
+            return obj.artist.label_name or obj.artist.username
+        if obj.artist.label:
+            return obj.artist.label.label_name or obj.artist.label.username
+        return "-"
+    get_label.short_description = "Label"
     
     actions = ['approve_releases', 'reject_releases', 'mark_released']
 

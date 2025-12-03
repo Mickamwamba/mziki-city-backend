@@ -62,3 +62,27 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+from rest_framework import viewsets
+from .serializers import ManagedArtistSerializer
+from django.contrib.auth import get_user_model
+
+from rest_framework.authentication import TokenAuthentication
+
+class ManagedArtistViewSet(viewsets.ModelViewSet):
+    serializer_class = ManagedArtistSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        # Return artists managed by the current user (Label)
+        User = get_user_model()
+        return User.objects.filter(label=self.request.user, is_artist=True)
+
+    def perform_create(self, serializer):
+        # The serializer create method handles linking to the label
+        serializer.save()
