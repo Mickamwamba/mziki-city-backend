@@ -1,2 +1,7 @@
 songs
 song_covers
+.env
+venv/
+staticfiles/
+__pycache__/
+*.pyc

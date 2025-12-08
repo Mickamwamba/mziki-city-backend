@@ -4,3 +4,6 @@ django-cors-headers
 django-jazzmin
 psycopg2-binary
 Pillow
+python-dotenv
+whitenoise
+gunicorn
