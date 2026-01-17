@@ -5,7 +5,8 @@ from distribution.admin import RevenueSplitAdmin, DistributionRequest
 from analytics.admin import WithdrawalRequestAdmin
 from .models import (
     Artist, ArtistSong, ArtistAlbum, ArtistRevenueSplit,
-    ReleaseRequest, PayoutRequest, PlatformSettings, SystemUser
+    ReleaseRequest, PayoutRequest, PlatformSettings, SystemUser,
+    InvestmentProduct
 )
 from music.models import Song, Album
 
@@ -338,3 +339,10 @@ class PlatformSettingsAdmin(admin.ModelAdmin):
 @admin.register(SystemUser)
 class SystemUserAdmin(CustomUserAdmin):
     pass
+
+# 6. Investment Management
+@admin.register(InvestmentProduct)
+class InvestmentProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    search_fields = ('name', 'description')
+    list_filter = ('is_active', 'created_at')

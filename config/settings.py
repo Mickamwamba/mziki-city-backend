@@ -80,6 +80,7 @@ JAZZMIN_SETTINGS = {
         "admin_dashboard.PayoutRequest",
         "admin_dashboard.PlatformSettings",
         "admin_dashboard.SystemUser",
+        "admin_dashboard.InvestmentProduct",
     ],
     "icons": {
         "auth": "fas fa-users-cog",
@@ -90,6 +91,7 @@ JAZZMIN_SETTINGS = {
         "admin_dashboard.PayoutRequest": "fas fa-money-bill-wave",
         "admin_dashboard.PlatformSettings": "fas fa-globe",
         "admin_dashboard.SystemUser": "fas fa-users",
+        "admin_dashboard.InvestmentProduct": "fas fa-hand-holding-usd",
     },
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",

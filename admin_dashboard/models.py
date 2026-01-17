@@ -59,3 +59,12 @@ class SystemUser(User):
         proxy = True
         verbose_name = "System User"
         verbose_name_plural = "System Users"
+
+# 6. Investment Management
+from investments.models import InvestmentProduct as InvProduct
+
+class InvestmentProduct(InvProduct):
+    class Meta:
+        proxy = True
+        verbose_name = "Investment Product"
+        verbose_name_plural = "Investment Products"
